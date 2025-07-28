@@ -210,50 +210,43 @@ class ReclamationController extends Controller
         return view('admin.reclamations.index', compact('reclamations'));
     }
 
-    public function unlockNote(Request $request, Reclamation $reclamation)
+ public function unlockNote(Request $request, Reclamation $reclamation)
 {
     $validated = $request->validate([
         'action' => 'required|in:accept,reject',
         'reponse_admin' => 'required_if:action,reject|nullable|string|max:1000',
     ]);
 
+    DB::beginTransaction();
     try {
-        DB::transaction(function () use ($validated, $reclamation) {
-            // Vérification de la note
-            if (!$reclamation->note) {
-                throw new \Exception("Cette réclamation n'est associée à aucune note valide.");
-            }
+        if (!$reclamation->note) {
+            throw new \Exception("Aucune note associée à cette réclamation");
+        }
 
-            // Traitement selon l'action
-            $reclamation->note->update([
-                'is_locked' => $validated['action'] === 'reject'
-            ]);
+        $reclamation->note->update([
+            'is_locked' => $validated['action'] === 'reject'
+        ]);
 
-            // Mise à jour de la réclamation
-            $reclamation->update([
-                'statut' => $validated['action'] === 'accept' ? 'resolue' : 'rejetee',
-                'reponse_admin' => $validated['action'] === 'reject' 
-                    ? $validated['reponse_admin'] 
-                    : 'Note déverrouillée avec succès',
-            ]);
+        $reclamation->update([
+            'statut' => $validated['action'] === 'accept' ? 'resolue' : 'rejetee',
+            'reponse_admin' => $validated['action'] === 'reject' 
+                ? $validated['reponse_admin'] 
+                : null,
+        ]);
 
-            // Notification sécurisée
-            if ($reclamation->professeur?->user) {
-                try {
-                    $reclamation->professeur->user->notify(
-                        new ReclamationResponseNotification($reclamation)
-                    );
-                } catch (\Exception $e) {
-                    Log::error("Notification failed: " . $e->getMessage());
-                }
-            }
-        });
+        if ($reclamation->professeur?->user) {
+            $reclamation->professeur->user->notify(
+                new ReclamationResponseNotification($reclamation)
+            );
+        }
 
-        return back()->with('success', 'Action réalisée avec succès.');
+        DB::commit();
+        return back()->with('success', 'Opération réussie');
 
     } catch (\Exception $e) {
-        Log::error("Erreur dans unlockNote : " . $e->getMessage());
-        return back()->with('error', 'Échec du traitement : ' . $e->getMessage());
+        DB::rollBack();
+        Log::error("Erreur unlockNote: ".$e->getMessage());
+        return back()->with('error', "Échec: ".$e->getMessage());
     }
 }
 }
