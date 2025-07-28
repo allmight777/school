@@ -122,42 +122,42 @@ class AdminController extends Controller
     /**
      * Rejet d'un utilisateur
      */
-public function rejectUser(Request $request, $id)
-{
-    // Validation du champ reason
-    $request->validate([
-        'reason' => 'required|string|max:1000',
-    ]);
+    public function rejectUser(Request $request, $id)
+    {
+        // Validation du champ reason
+        $request->validate([
+            'reason' => 'required|string|max:1000',
+        ]);
 
-    // Récupération de l'utilisateur ou erreur 404 si non trouvé
-    $user = User::findOrFail($id);
-    $fullName = $this->fullName($user);
+        // Récupération de l'utilisateur ou erreur 404 si non trouvé
+        $user = User::findOrFail($id);
+        $fullName = $this->fullName($user);
 
-    try {
-        // Envoi du mail de rejet
-        Mail::to($user->email)->send(new AccountRejected($user, $request->reason));
-    } catch (\Exception $e) {
-        // Optionnel : Log l'erreur d'envoi de mail, mais continue la suppression
-        \Log::error("Erreur lors de l'envoi du mail de rejet pour l'utilisateur {$user->email} : " . $e->getMessage());
+        try {
+            // Envoi du mail de rejet
+            Mail::to($user->email)->send(new AccountRejected($user, $request->reason));
+        } catch (\Exception $e) {
+            // Optionnel : Log l'erreur d'envoi de mail, mais continue la suppression
+            \Log::error("Erreur lors de l'envoi du mail de rejet pour l'utilisateur {$user->email} : " . $e->getMessage());
+        }
+
+        // Suppression des relations professeur, si existant
+        if ($user->professeur) {
+            $user->professeur->classes()->detach();
+            $user->professeur->matieres()->detach();
+            $user->professeur->delete();
+        }
+
+        // Suppression de l'élève, si existant
+        if ($user->eleve) {
+            $user->eleve->delete();
+        }
+
+        // Suppression de l'utilisateur
+        $user->delete();
+
+        return back()->with('success', "Le compte de {$fullName} a été rejeté.");
     }
-
-    // Suppression des relations professeur, si existant
-    if ($user->professeur) {
-        $user->professeur->classes()->detach();
-        $user->professeur->matieres()->detach();
-        $user->professeur->delete();
-    }
-
-    // Suppression de l'élève, si existant
-    if ($user->eleve) {
-        $user->eleve->delete();
-    }
-
-    // Suppression de l'utilisateur
-    $user->delete();
-
-    return back()->with('success', "Le compte de {$fullName} a été rejeté.");
-}
 
 
     /**
@@ -183,16 +183,14 @@ public function rejectUser(Request $request, $id)
     // Gestion des affectations professeurs/classes/matières par année scolaires
 
     // affectation profs
-
-  public function affectation(User $professeur)
+    public function affectation(User $professeur)
     {
-        $professeur = User::findOrFail($id);
         $annees = AnneeAcademique::all();
 
         $classes = Classe::all()->map(function ($classe) {
             $classe->matieres = DB::table('classe_matiere_professeur')
                 ->where('classe_id', $classe->id)
-                ->whereNull('professeur_id')
+                ->whereNull('professeur_id') 
                 ->join('matieres', 'matieres.id', '=', 'classe_matiere_professeur.matiere_id')
                 ->select('matieres.id', 'matieres.nom', 'matieres.code')
                 ->distinct()
@@ -208,7 +206,6 @@ public function rejectUser(Request $request, $id)
         return view('admin.professeurs.affectation', compact('professeur', 'annees', 'classes', 'affectations'));
     }
 
-    // affectation profs
 
     public function storeAffectation(Request $request, $id)
     {
@@ -224,7 +221,7 @@ public function rejectUser(Request $request, $id)
             $classe = Classe::find($classe_id);
             $annee = AnneeAcademique::find($annee_id);
 
-            // Vérifier si l'affectation existe déjà
+            // Vérifier si l'affectation existe déjà pour cette année
             $exists = Affectation::where('classe_id', $classe_id)
                 ->where('matiere_id', $matiere_id)
                 ->where('annee_academique_id', $annee_id)
@@ -429,7 +426,7 @@ public function rejectUser(Request $request, $id)
     public function updateAnnee(Request $request, $id)
     {
         $request->validate([
-            'libelle' => 'required|string|max:255|unique:annee_academique,libelle,'.$id,
+            'libelle' => 'required|string|max:255|unique:annee_academique,libelle,' . $id,
         ]);
 
         $annee = AnneeAcademique::findOrFail($id);
@@ -477,7 +474,7 @@ public function rejectUser(Request $request, $id)
         $validator = Validator::make($request->all(), [
             'nom' => 'nullable|string|max:255',
             'prenom' => 'nullable|string|max:255',
-            'email' => 'nullable|email|unique:users,email,'.$user->id,
+            'email' => 'nullable|email|unique:users,email,' . $user->id,
             'telephone' => 'nullable|string|max:20',
             'date_de_naissance' => 'nullable|date',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
