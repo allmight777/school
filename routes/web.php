@@ -95,10 +95,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/resultats/{anneeId}/{classeId}', [AdminController::class, 'showElevesForResultats'])->name('resultats.eleves');
 
         // Routes pour les réclamations admin
- Route::prefix('reclamations')->group(function () {
+    // Routes pour les réclamations admin
+        Route::prefix('reclamations')->group(function () {
             Route::get('/', [ReclamationController::class, 'adminIndex'])->name('reclamations.admin');
-               Route::post('/reclamations/unlock/{reclamation}', [ReclamationController::class, 'unlockNote'])
-        ->name('reclamations.unlock');
+            Route::post('/unlock/{reclamation}', [ReclamationController::class, 'unlockNote'])->name('reclamations.unlock');
         });
 
     });
@@ -135,7 +135,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile/editeleve', [BulletinController::class, 'editProfileleve'])->name('profile.editeleve');
 
     // Routes pour les réclamations
-    Route::prefix('reclamations')->group(function () {
+  Route::prefix('reclamations')->group(function () {
         Route::get('/', [ReclamationController::class, 'professeurIndex'])->name('reclamations.professeur');
         Route::get('/create/{eleve}', [ReclamationController::class, 'create'])->name('reclamations.create');
         Route::post('/store', [ReclamationController::class, 'store'])->name('reclamations.store');
