@@ -97,7 +97,8 @@ Route::middleware('auth')->group(function () {
         // Routes pour les réclamations admin
  Route::prefix('reclamations')->group(function () {
             Route::get('/', [ReclamationController::class, 'adminIndex'])->name('reclamations.admin');
-            Route::post('/unlock/{reclamation}', [ReclamationController::class, 'unlockNote'])->name('reclamations.unlock');
+               Route::post('/reclamations/unlock/{reclamation}', [ReclamationController::class, 'unlockNote'])
+        ->name('reclamations.unlock');
         });
 
     });
