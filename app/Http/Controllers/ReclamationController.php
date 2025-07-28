@@ -210,9 +210,8 @@ class ReclamationController extends Controller
         return view('admin.reclamations.index', compact('reclamations'));
     }
 
- public function unlockNote(Request $request, Reclamation $reclamation)
-{
-    try {
+    public function unlockNote(Request $request, Reclamation $reclamation)
+    {
         $validated = $request->validate([
             'action' => 'required|in:accept,reject',
             'reponse_admin' => 'required_if:action,reject|nullable|string|max:1000',
@@ -222,38 +221,29 @@ class ReclamationController extends Controller
             $note = $reclamation->note;
 
             if ($validated['action'] === 'accept') {
+                // Déverrouiller la note
                 if ($note && $note->is_locked) {
                     $note->update(['is_locked' => false]);
                 }
             } elseif ($validated['action'] === 'reject') {
+                // Rejeter, verrouiller la note si elle ne l'est pas déjà
                 if ($note && ! $note->is_locked) {
                     $note->update(['is_locked' => true]);
                 }
             }
 
+            // Mettre à jour la réclamation
             $reclamation->update([
                 'statut' => $validated['action'] === 'accept' ? 'resolue' : 'rejetee',
                 'reponse_admin' => $validated['reponse_admin'] ?? ($validated['action'] === 'accept' ? 'Note déverrouillée' : 'Note verrouillée'),
             ]);
 
+            // Notification au professeur
             if ($reclamation->professeur && $reclamation->professeur->user) {
                 $reclamation->professeur->user->notify(new ReclamationResponseNotification($reclamation));
             }
         });
 
         return back()->with('success', 'Réclamation traitée avec succès.');
-
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        // Gestion des erreurs de validation
-        return back()->withErrors($e->errors())->withInput();
-    } catch (\Exception $e) {
-        // Affiche l’erreur complète pour debug
-        return response()->view('debug', [
-            'message' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-        ], 500);
     }
-}
-
-
 }
