@@ -20,25 +20,44 @@ use Illuminate\Support\Facades\Log;
 
 class ReclamationController extends Controller
 {
-    public function create(Eleve $eleve)
-    {
-        $professeur = Auth::user()->professeur;
+public function create(Eleve $eleve)
+{
+    $professeur = Auth::user()->professeur;
 
-        if (! $professeur) {
-            abort(403, 'Accès réservé aux professeurs');
-        }
+    if (!$professeur) {
+        abort(403, 'Accès réservé aux professeurs');
+    }
 
-        // Récupérer les matières enseignées par ce professeur pour cet élève
+    // Vérification des relations
+    if (!$eleve->classe_id || !$eleve->annee_academique_id) {
+        abort(400, "Les informations de classe ou d'année académique de l'élève sont manquantes");
+    }
+
+    try {
         $matieres = Matiere::whereHas('affectations', function ($query) use ($professeur, $eleve) {
             $query->where('professeur_id', $professeur->id)
-                ->where('classe_id', $eleve->classe_id);
+                  ->where('classe_id', $eleve->classe_id);
         })->get();
 
-        $periodes = PeriodeAcademique::where('annee_academique_id', $eleve->annee_academique_id)->get();
-        $annee = AnneeAcademique::find($eleve->annee_academique_id);
+        if ($matieres->isEmpty()) {
+            return back()->with('error', 'Aucune matière enseignée à cet élève');
+        }
 
-        return view('professeur.reclamations.create', compact('eleve', 'matieres', 'periodes', 'annee'));
+        $periodes = PeriodeAcademique::where('annee_academique_id', $eleve->annee_academique_id)
+                    ->get();
+
+        return view('professeur.reclamations.create', [
+            'eleve' => $eleve,
+            'matieres' => $matieres,
+            'periodes' => $periodes,
+            'annee' => $eleve->anneeAcademique
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error("Erreur création réclamation: ".$e->getMessage());
+        return back()->with('error', 'Erreur lors du chargement du formulaire');
     }
+}
 
     public function store(Request $request)
     {
