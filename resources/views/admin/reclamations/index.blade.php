@@ -67,75 +67,34 @@
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal"
                                                         aria-label="Close"></button>
                                                 </div>
-                                                <form action="{{ route('admin.reclamations.unlock', $reclamation) }}"
-                                                    method="POST">
-                                                    @csrf
-                                                    <div class="modal-body">
-                                                        <div class="mb-3">
-                                                            <h6>Description :</h6>
-                                                            <p>{{ $reclamation->description }}</p>
-                                                        </div>
+                                   <form action="{{ route('admin.reclamations.unlock', $reclamation) }}" method="POST">
+    @csrf
+    <div class="modal-body">
+        <div class="mb-3">
+            <h6>Description :</h6>
+            <p>{{ $reclamation->description }}</p>
+        </div>
 
-                                                        <div class="row mb-3">
-                                                            <div class="col-md-6">
-                                                                <h6>Note actuelle :</h6>
-                                                                <div class="card">
-                                                                    <div class="card-body">
-                                                                        <p><strong>Valeur :</strong>
-                                                                            {{ $reclamation->note->valeur ?? 'N/A' }}</p>
-                                                                        <p><strong>Statut :</strong>
-                                                                            @if ($reclamation->note && $reclamation->note->is_locked)
-                                                                                <span
-                                                                                    class="badge bg-danger">Verrouillée</span>
-                                                                            @else
-                                                                                <span
-                                                                                    class="badge bg-success">Déverrouillée</span>
-                                                                            @endif
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-6">
-                                                                <h6>Informations :</h6>
-                                                                <ul class="list-group">
-                                                                    <li class="list-group-item">
-                                                                        <strong>Professeur :</strong>
-                                                                        {{ $reclamation->professeur->user->nom ?? 'N/A' }}
-                                                                    </li>
-                                                                    <li class="list-group-item">
-                                                                        <strong>Date création :</strong>
-                                                                        {{ $reclamation->created_at->format('d/m/Y H:i') }}
-                                                                    </li>
-                                                                </ul>
-                                                            </div>
-                                                        </div>
+        <div class="mb-3">
+            <label for="action" class="form-label">Action</label>
+            <select class="form-select" name="action" id="action" required>
+                <option value="accept">Accepter (déverrouiller la note)</option>
+                <option value="reject">Rejeter (maintenir verrouillée)</option>
+            </select>
+        </div>
 
-                                                        <div class="mb-3">
-                                                            <label for="action" class="form-label">Action</label>
-                                                            <select class="form-select" name="action" id="action"
-                                                                required>
-                                                                <option value="accept">Accepter (déverrouiller la note)
-                                                                </option>
-                                                                <option value="reject">Rejeter (maintenir verrouillée)
-                                                                </option>
-                                                            </select>
-                                                        </div>
+        <div class="mb-3">
+            <label for="reponse_admin" class="form-label">Réponse à envoyer au professeur</label>
+            <textarea class="form-control" name="reponse_admin" id="reponse_admin" rows="3" required></textarea>
+            <small class="text-muted">Cette réponse sera envoyée au professeur qui a fait la demande</small>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="submit" class="btn btn-primary">Valider la décision</button>
+    </div>
+</form>
 
-                                                        <div class="mb-3">
-                                                            <label for="reponse_admin" class="form-label">Réponse à envoyer
-                                                                au professeur</label>
-                                                            <textarea class="form-control" name="reponse_admin" id="reponse_admin" rows="3" required></textarea>
-                                                            <small class="text-muted">Cette réponse sera envoyée au
-                                                                professeur qui a fait la demande</small>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary"
-                                                            data-bs-dismiss="modal">Annuler</button>
-                                                        <button type="submit" class="btn btn-primary">Valider la
-                                                            décision</button>
-                                                    </div>
-                                                </form>
                                             </div>
                                         </div>
                                     </div>
