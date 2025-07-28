@@ -14,7 +14,7 @@ return new class extends Migration
             // Relations obligatoires
             $table->foreignId('matiere_id')->constrained('matieres');
             $table->foreignId('periode_id')->constrained('periodes_academiques');
-            $table->foreignId('annee_academique_id')->constrained('annee_academiques');
+            $table->foreignId('annee_academique_id')->constrained('annee_academique');
             $table->foreignId('eleve_id')->constrained('eleves');
             $table->foreignId('note_id')->constrained('notes')->onDelete('cascade');
             
