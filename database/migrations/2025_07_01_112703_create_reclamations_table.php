@@ -27,7 +27,7 @@ return new class extends Migration
             $table->string('type');
             $table->text('description');
             $table->string('statut')->default('nouvelle');
-            $table->text('reponse_admin')->nullable();
+   
             
             $table->timestamps();
         });
