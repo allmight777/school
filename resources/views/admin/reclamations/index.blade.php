@@ -14,6 +14,11 @@
                         {{ session('success') }}
                     </div>
                 @endif
+                @if (session('error'))
+                    <div class="alert alert-danger">
+                        {{ session('error') }}
+                    </div>
+                @endif
             </div>
 
             <div class="card-body">
@@ -24,7 +29,6 @@
                     </div>
                 @else
                     <div class="table-responsive">
-
                         <table class="table table-hover">
                             <thead class="table-light">
                                 <tr>
@@ -42,8 +46,7 @@
                                     <tr>
                                         <td>{{ $reclamation->created_at->format('d/m/Y H:i') }}</td>
                                         <td>{{ $reclamation->professeur->user->nom ?? 'N/A' }}</td>
-                                        <td>{{ $reclamation->eleve->user->nom }} {{ $reclamation->eleve->user->prenom }}
-                                        </td>
+                                        <td>{{ $reclamation->eleve->user->nom }} {{ $reclamation->eleve->user->prenom }}</td>
                                         <td>{{ $reclamation->matiere->nom }}</td>
                                         <td>{{ $reclamation->periode->nom }}</td>
                                         <td>{{ ucfirst($reclamation->type_evaluation) }}
@@ -85,11 +88,9 @@
                                                                             {{ $reclamation->note->valeur ?? 'N/A' }}</p>
                                                                         <p><strong>Statut :</strong>
                                                                             @if ($reclamation->note && $reclamation->note->is_locked)
-                                                                                <span
-                                                                                    class="badge bg-danger">Verrouillée</span>
+                                                                                <span class="badge bg-danger">Verrouillée</span>
                                                                             @else
-                                                                                <span
-                                                                                    class="badge bg-success">Déverrouillée</span>
+                                                                                <span class="badge bg-success">Déverrouillée</span>
                                                                             @endif
                                                                         </p>
                                                                     </div>
@@ -111,20 +112,19 @@
                                                         </div>
 
                                                         <div class="mb-3">
-                                                            <label for="action" class="form-label">Action</label>
-                                                            <select class="form-select" name="action" id="action"
-                                                                required>
-                                                                <option value="accept">Accepter (déverrouiller la note)
-                                                                </option>
-                                                                <option value="reject">Rejeter (maintenir verrouillée)
-                                                                </option>
+                                                            <label for="action{{ $reclamation->id }}" class="form-label">Action</label>
+                                                            <select class="form-select" name="action" id="action{{ $reclamation->id }}" required>
+                                                                <option value="">Sélectionnez une action</option>
+                                                                <option value="accept">Accepter (déverrouiller la note)</option>
+                                                                <option value="reject">Rejeter (maintenir verrouillée)</option>
                                                             </select>
                                                         </div>
 
                                                         <div class="mb-3">
-                                                            <label for="reponse_admin" class="form-label">Réponse à envoyer
+                                                            <label for="reponse_admin{{ $reclamation->id }}" class="form-label">Réponse à envoyer
                                                                 au professeur</label>
-                                                            <textarea class="form-control" name="reponse_admin" id="reponse_admin" rows="3" required></textarea>
+                                                            <textarea class="form-control" name="reponse_admin" id="reponse_admin{{ $reclamation->id }}" 
+                                                                rows="3" disabled></textarea>
                                                             <small class="text-muted">Cette réponse sera envoyée au
                                                                 professeur qui a fait la demande</small>
                                                         </div>
@@ -139,6 +139,22 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    @push('scripts')
+                                        <script>
+                                            document.getElementById('action{{ $reclamation->id }}').addEventListener('change', function() {
+                                                const textarea = document.getElementById('reponse_admin{{ $reclamation->id }}');
+                                                if (this.value === 'reject') {
+                                                    textarea.removeAttribute('disabled');
+                                                    textarea.setAttribute('required', 'required');
+                                                } else {
+                                                    textarea.value = '';
+                                                    textarea.setAttribute('disabled', 'disabled');
+                                                    textarea.removeAttribute('required');
+                                                }
+                                            });
+                                        </script>
+                                    @endpush
                                 @endforeach
                             </tbody>
                         </table>
