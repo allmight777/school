@@ -122,31 +122,43 @@ class AdminController extends Controller
     /**
      * Rejet d'un utilisateur
      */
-    public function rejectUser(Request $request, $id)
-    {
-        $request->validate([
-            'reason' => 'required|string|max:1000',
-        ]);
+public function rejectUser(Request $request, $id)
+{
+    // Validation du champ reason
+    $request->validate([
+        'reason' => 'required|string|max:1000',
+    ]);
 
-        $user = User::findOrFail($id);
-        $fullName = $this->fullName($user);
+    // Récupération de l'utilisateur ou erreur 404 si non trouvé
+    $user = User::findOrFail($id);
+    $fullName = $this->fullName($user);
 
+    try {
+        // Envoi du mail de rejet
         Mail::to($user->email)->send(new AccountRejected($user, $request->reason));
-
-        if ($user->professeur) {
-            $user->professeur->classes()->detach();
-            $user->professeur->matieres()->detach();
-            $user->professeur->delete();
-        }
-
-        if ($user->eleve) {
-            $user->eleve->delete();
-        }
-
-        $user->delete();
-
-        return back()->with('success', "Le compte de {$fullName} a été rejeté.");
+    } catch (\Exception $e) {
+        // Optionnel : Log l'erreur d'envoi de mail, mais continue la suppression
+        \Log::error("Erreur lors de l'envoi du mail de rejet pour l'utilisateur {$user->email} : " . $e->getMessage());
     }
+
+    // Suppression des relations professeur, si existant
+    if ($user->professeur) {
+        $user->professeur->classes()->detach();
+        $user->professeur->matieres()->detach();
+        $user->professeur->delete();
+    }
+
+    // Suppression de l'élève, si existant
+    if ($user->eleve) {
+        $user->eleve->delete();
+    }
+
+    // Suppression de l'utilisateur
+    $user->delete();
+
+    return back()->with('success', "Le compte de {$fullName} a été rejeté.");
+}
+
 
     /**
      * Désactivation d'un utilisateur
