@@ -210,44 +210,53 @@ class ReclamationController extends Controller
         return view('admin.reclamations.index', compact('reclamations'));
     }
 
-public function unlockNote(Request $request, Reclamation $reclamation)
-{
-    $validated = $request->validate([
-        'action' => 'required|in:accept,reject',
-        'reponse_admin' => 'required_if:action,reject|nullable|string|max:1000',
-    ]);
-
-    DB::beginTransaction();
-    try {
-        if (!$reclamation->note) {
-            throw new \Exception("Aucune note associée à cette réclamation");
-        }
-
-        $reclamation->note->update([
-            'is_locked' => $validated['action'] === 'reject'
+ public function unlockNote(Request $request, Reclamation $reclamation)
+    {
+        $validated = $request->validate([
+            'action' => 'required|in:accept,reject',
+            'reponse_admin' => 'required_if:action,reject|string|max:1000|nullable',
         ]);
 
-        $reclamation->update([
-            'statut' => $validated['action'] === 'accept' ? 'resolue' : 'rejetee',
-            'reponse_admin' => $validated['action'] === 'reject' 
-                ? $validated['reponse_admin'] 
-                : null,
-        ]);
+        DB::beginTransaction();
+        try {
+            // Vérification plus robuste des relations
+            if (!$reclamation->note) {
+                throw new \Exception("Aucune note associée à cette réclamation");
+            }
 
-        if ($reclamation->professeur?->user) {
-            $reclamation->professeur->user->notify(
-                new ReclamationResponseNotification($reclamation)
-            );
+            // Mise à jour de la note
+            $reclamation->note->update([
+                'is_locked' => $validated['action'] === 'reject'
+            ]);
+
+            // Mise à jour de la réclamation
+            $updateData = [
+                'statut' => $validated['action'] === 'accept' ? 'resolue' : 'rejetee',
+            ];
+
+            if ($validated['action'] === 'reject') {
+                $updateData['reponse_admin'] = $validated['reponse_admin'];
+            }
+
+            $reclamation->update($updateData);
+
+            // Envoi de notification seulement pour les rejets
+            if ($validated['action'] === 'reject' && 
+                $reclamation->professeur && 
+                $reclamation->professeur->user) {
+                $reclamation->professeur->user->notify(
+                    new ReclamationResponseNotification($reclamation)
+                );
+            }
+
+            DB::commit();
+            return back()->with('success', 'Opération réussie');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Erreur unlockNote: ".$e->getMessage()."\n".$e->getTraceAsString());
+            return back()->with('error', 'Une erreur est survenue: '.$e->getMessage());
         }
-
-        DB::commit();
-        return back()->with('success', 'Opération réussie');
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error("Erreur unlockNote: ".$e->getMessage());
-        throw $e; // ✅ Laisse Laravel afficher l’erreur
     }
 }
-
 }
