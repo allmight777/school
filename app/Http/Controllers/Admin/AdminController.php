@@ -184,7 +184,7 @@ public function rejectUser(Request $request, $id)
 
     // affectation profs
 
-    public function affectation($id)
+  public function affectation(User $professeur)
     {
         $professeur = User::findOrFail($id);
         $annees = AnneeAcademique::all();
