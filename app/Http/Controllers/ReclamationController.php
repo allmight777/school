@@ -20,44 +20,25 @@ use Illuminate\Support\Facades\Log;
 
 class ReclamationController extends Controller
 {
-public function create(Eleve $eleve)
-{
-    $professeur = Auth::user()->professeur;
+    public function create(Eleve $eleve)
+    {
+        $professeur = Auth::user()->professeur;
 
-    if (!$professeur) {
-        abort(403, 'Accès réservé aux professeurs');
-    }
-
-    // Vérification des relations
-    if (!$eleve->classe_id || !$eleve->annee_academique_id) {
-        abort(400, "Les informations de classe ou d'année académique de l'élève sont manquantes");
-    }
-
-    try {
-        $matieres = Matiere::whereHas('affectations', function ($query) use ($professeur, $eleve) {
-            $query->where('professeur_id', $professeur->id)
-                  ->where('classe_id', $eleve->classe_id);
-        })->get();
-
-        if ($matieres->isEmpty()) {
-            return back()->with('error', 'Aucune matière enseignée à cet élève');
+        if (! $professeur) {
+            abort(403, 'Accès réservé aux professeurs');
         }
 
-        $periodes = PeriodeAcademique::where('annee_academique_id', $eleve->annee_academique_id)
-                    ->get();
+        // Récupérer les matières enseignées par ce professeur pour cet élève
+        $matieres = Matiere::whereHas('affectations', function ($query) use ($professeur, $eleve) {
+            $query->where('professeur_id', $professeur->id)
+                ->where('classe_id', $eleve->classe_id);
+        })->get();
 
-        return view('professeur.reclamations.create', [
-            'eleve' => $eleve,
-            'matieres' => $matieres,
-            'periodes' => $periodes,
-            'annee' => $eleve->anneeAcademique
-        ]);
+        $periodes = PeriodeAcademique::where('annee_academique_id', $eleve->annee_academique_id)->get();
+        $annee = AnneeAcademique::find($eleve->annee_academique_id);
 
-    } catch (\Exception $e) {
-        Log::error("Erreur création réclamation: ".$e->getMessage());
-        return back()->with('error', 'Erreur lors du chargement du formulaire');
+        return view('professeur.reclamations.create', compact('eleve', 'matieres', 'periodes', 'annee'));
     }
-}
 
     public function store(Request $request)
     {
@@ -229,53 +210,40 @@ public function create(Eleve $eleve)
         return view('admin.reclamations.index', compact('reclamations'));
     }
 
- public function unlockNote(Request $request, Reclamation $reclamation)
+    public function unlockNote(Request $request, Reclamation $reclamation)
     {
         $validated = $request->validate([
             'action' => 'required|in:accept,reject',
-            'reponse_admin' => 'required_if:action,reject|string|max:1000|nullable',
+            'reponse_admin' => 'required_if:action,reject|nullable|string|max:1000',
         ]);
 
-        DB::beginTransaction();
-        try {
-            // Vérification plus robuste des relations
-            if (!$reclamation->note) {
-                throw new \Exception("Aucune note associée à cette réclamation");
+        DB::transaction(function () use ($validated, $reclamation) {
+            $note = $reclamation->note;
+
+            if ($validated['action'] === 'accept') {
+                // Déverrouiller la note
+                if ($note && $note->is_locked) {
+                    $note->update(['is_locked' => false]);
+                }
+            } elseif ($validated['action'] === 'reject') {
+                // Rejeter, verrouiller la note si elle ne l'est pas déjà
+                if ($note && ! $note->is_locked) {
+                    $note->update(['is_locked' => true]);
+                }
             }
 
-            // Mise à jour de la note
-            $reclamation->note->update([
-                'is_locked' => $validated['action'] === 'reject'
+            // Mettre à jour la réclamation
+            $reclamation->update([
+                'statut' => $validated['action'] === 'accept' ? 'resolue' : 'rejetee',
+                'reponse_admin' => $validated['reponse_admin'] ?? ($validated['action'] === 'accept' ? 'Note déverrouillée' : 'Note verrouillée'),
             ]);
 
-            // Mise à jour de la réclamation
-            $updateData = [
-                'statut' => $validated['action'] === 'accept' ? 'resolue' : 'rejetee',
-            ];
-
-            if ($validated['action'] === 'reject') {
-                $updateData['reponse_admin'] = $validated['reponse_admin'];
+            // Notification au professeur
+            if ($reclamation->professeur && $reclamation->professeur->user) {
+                $reclamation->professeur->user->notify(new ReclamationResponseNotification($reclamation));
             }
+        });
 
-            $reclamation->update($updateData);
-
-            // Envoi de notification seulement pour les rejets
-            if ($validated['action'] === 'reject' && 
-                $reclamation->professeur && 
-                $reclamation->professeur->user) {
-                $reclamation->professeur->user->notify(
-                    new ReclamationResponseNotification($reclamation)
-                );
-            }
-
-            DB::commit();
-            return back()->with('success', 'Opération réussie');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Erreur unlockNote: ".$e->getMessage()."\n".$e->getTraceAsString());
-            return back()->with('error', 'Une erreur est survenue: '.$e->getMessage());
-        }
+        return back()->with('success', 'Réclamation traitée avec succès.');
     }
-}
 }
