@@ -67,7 +67,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('periodes/{id}', [PeriodeAcademiqueController::class, 'destroy'])->name('periodes.destroy');
 
         // Affectation classes/matières
-        Route::get('professeurs/{professeur}/affectation', [AdminController::class, 'affectation'])->name('professeurs.affectation');
+       Route::get('professeurs/{professeur}/affectation', [AdminController::class, 'affectation'])->name('professeurs.affectation');
         Route::post('professeurs/{professeur}/affectation', [AdminController::class, 'storeAffectation'])->name('professeurs.affectation.store');
         Route::get('/professeurs/{id}/edit-affectation', [AdminController::class, 'editAffectation'])->name('professeurs.affectation.edit');
         Route::put('/professeurs/{id}/update-affectation', [AdminController::class, 'updateAffectation'])->name('professeurs.affectation.update');
