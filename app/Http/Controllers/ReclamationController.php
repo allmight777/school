@@ -210,7 +210,7 @@ class ReclamationController extends Controller
         return view('admin.reclamations.index', compact('reclamations'));
     }
 
- public function unlockNote(Request $request, Reclamation $reclamation)
+public function unlockNote(Request $request, Reclamation $reclamation)
 {
     $validated = $request->validate([
         'action' => 'required|in:accept,reject',
@@ -246,7 +246,8 @@ class ReclamationController extends Controller
     } catch (\Exception $e) {
         DB::rollBack();
         Log::error("Erreur unlockNote: ".$e->getMessage());
-        return back()->with('error', "Échec: ".$e->getMessage());
+        throw $e; // ✅ Laisse Laravel afficher l’erreur
     }
 }
+
 }
