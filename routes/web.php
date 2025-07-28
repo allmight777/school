@@ -94,11 +94,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/resultats/{anneeId}', [AdminController::class, 'showClassesForAnnee'])->name('resultats.classes');
         Route::get('/resultats/{anneeId}/{classeId}', [AdminController::class, 'showElevesForResultats'])->name('resultats.eleves');
 
-          // Routes pour les réclamations admin
-        Route::prefix('reclamations')->group(function () {
-            Route::get('/', [ReclamationController::class, 'adminIndex'])->name('reclamations.admin');
-            Route::post('/unlock/{reclamation}', [ReclamationController::class, 'unlockNote'])->name('reclamations.unlock');
-        });
+        // Routes pour les réclamations admin
+Route::prefix('reclamations')->group(function () {
+    Route::get('/', [ReclamationController::class, 'adminIndex'])->name('reclamations.admin');
+    Route::post('/unlock/{reclamation}', [ReclamationController::class, 'unlockNote'])->name('reclamations.unlock');
+});
+
     });
 
     // Ressources principales
