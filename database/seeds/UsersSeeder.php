@@ -17,7 +17,7 @@ class UsersSeeder extends Seeder
             'photo' => 'url.jpg',
             'email' => 'admin@gmail.com',
             'date_de_naissance' => '1990-01-01',
-            'password' => Hash::make('admin123'),
+            'password' => Hash::make('12345678'),
             'is_admin' => true,
             'is_active' => true,
         ]);
