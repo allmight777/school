@@ -1,3 +1,4 @@
+<!-- resources/views/debug.blade.php -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -15,3 +16,4 @@
     <pre>{{ $trace }}</pre>
 </body>
 </html>
+
