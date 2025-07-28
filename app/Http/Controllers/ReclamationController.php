@@ -211,39 +211,49 @@ class ReclamationController extends Controller
     }
 
     public function unlockNote(Request $request, Reclamation $reclamation)
-    {
-        $validated = $request->validate([
-            'action' => 'required|in:accept,reject',
-            'reponse_admin' => 'required_if:action,reject|nullable|string|max:1000',
-        ]);
+{
+    $validated = $request->validate([
+        'action' => 'required|in:accept,reject',
+        'reponse_admin' => 'required_if:action,reject|nullable|string|max:1000',
+    ]);
 
+    try {
         DB::transaction(function () use ($validated, $reclamation) {
-            $note = $reclamation->note;
-
-            if ($validated['action'] === 'accept') {
-                // Déverrouiller la note
-                if ($note && $note->is_locked) {
-                    $note->update(['is_locked' => false]);
-                }
-            } elseif ($validated['action'] === 'reject') {
-                // Rejeter, verrouiller la note si elle ne l'est pas déjà
-                if ($note && ! $note->is_locked) {
-                    $note->update(['is_locked' => true]);
-                }
+            // Vérification de la note
+            if (!$reclamation->note) {
+                throw new \Exception("Cette réclamation n'est associée à aucune note valide.");
             }
 
-            // Mettre à jour la réclamation
-            $reclamation->update([
-                'statut' => $validated['action'] === 'accept' ? 'resolue' : 'rejetee',
-                'reponse_admin' => $validated['reponse_admin'] ?? ($validated['action'] === 'accept' ? 'Note déverrouillée' : 'Note verrouillée'),
+            // Traitement selon l'action
+            $reclamation->note->update([
+                'is_locked' => $validated['action'] === 'reject'
             ]);
 
-            // Notification au professeur
-            if ($reclamation->professeur && $reclamation->professeur->user) {
-                $reclamation->professeur->user->notify(new ReclamationResponseNotification($reclamation));
+            // Mise à jour de la réclamation
+            $reclamation->update([
+                'statut' => $validated['action'] === 'accept' ? 'resolue' : 'rejetee',
+                'reponse_admin' => $validated['action'] === 'reject' 
+                    ? $validated['reponse_admin'] 
+                    : 'Note déverrouillée avec succès',
+            ]);
+
+            // Notification sécurisée
+            if ($reclamation->professeur?->user) {
+                try {
+                    $reclamation->professeur->user->notify(
+                        new ReclamationResponseNotification($reclamation)
+                    );
+                } catch (\Exception $e) {
+                    Log::error("Notification failed: " . $e->getMessage());
+                }
             }
         });
 
-        return back()->with('success', 'Réclamation traitée avec succès.');
+        return back()->with('success', 'Action réalisée avec succès.');
+
+    } catch (\Exception $e) {
+        Log::error("Erreur dans unlockNote : " . $e->getMessage());
+        return back()->with('error', 'Échec du traitement : ' . $e->getMessage());
     }
+}
 }
