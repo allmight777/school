@@ -235,22 +235,21 @@ public function unlockNote(Request $request, Reclamation $reclamation)
                 'statut' => $validated['action'] === 'accept' ? 'resolue' : 'rejetee',
                 'reponse_admin' => $validated['reponse_admin'] ?? ($validated['action'] === 'accept' ? 'Note déverrouillée' : 'Note verrouillée'),
             ]);
-
-            if ($reclamation->professeur && $reclamation->professeur->user) {
-                $reclamation->professeur->user->notify(new ReclamationResponseNotification($reclamation));
-            }
         });
+
+      
+        $reclamation->refresh(); 
+        $reclamation->professeur?->user?->notify(new ReclamationResponseNotification($reclamation));
 
         return back()->with('success', 'Réclamation traitée avec succès.');
     } catch (\Throwable $e) {
-        // Facultatif : logger pour trace serveur
         Log::error('Erreur unlockNote : ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
-        // Retourne la vue debug
         return response()->view('debug', [
             'message' => $e->getMessage(),
             'trace' => $e->getTraceAsString(),
         ], 500);
     }
 }
+
 }
